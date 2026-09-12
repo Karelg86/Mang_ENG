@@ -88,6 +88,19 @@ async function extractChapters(url) {
     }
 }
 
+// TRAPPOLA PER LA CACHE
+async function extractEpisodes(url) {
+    return JSON.stringify([{
+        id: "error_cache",
+        title: "❌ ERRORE: CACHE DELL'APP. Rimuovi modulo e usa il nuovo link mangeng.json!",
+        number: 1
+    }]);
+}
+
+async function extractStreamUrl(url) {
+    return "error";
+}
+
 async function extractText(url) {
     try {
         const response = await soraFetch(url);
@@ -98,7 +111,7 @@ async function extractText(url) {
             try {
                 const pages = JSON.parse(thzqMatch[1]);
                 if (pages && pages.length > 0) {
-                    return pages.map(src => `<img src='${src}' style='max-width:100%;height:auto;display:block;margin:0 auto;'/>`).join('<br/>');
+                    return pages.map(function(src) { return "<img src='" + src + "' style='max-width:100%;height:auto;display:block;margin:0 auto;'/>"; }).join('<br/>');
                 }
             } catch (_) {}
         }
@@ -108,7 +121,7 @@ async function extractText(url) {
             try {
                 const pages = JSON.parse(ytawMatch[1]);
                 if (pages && pages.length > 0) {
-                    return pages.map(src => `<img src='${src}' style='max-width:100%;height:auto;display:block;margin:0 auto;'/>`).join('<br/>');
+                    return pages.map(function(src) { return "<img src='" + src + "' style='max-width:100%;height:auto;display:block;margin:0 auto;'/>"; }).join('<br/>');
                 }
             } catch (_) {}
         }
@@ -121,7 +134,9 @@ async function extractText(url) {
 
 async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
     try {
-        return await fetchv2(url, options.headers ?? {}, options.method ?? 'GET', options.body ?? null);
+        const response = await fetchv2(url, options.headers ?? {}, options.method ?? 'GET', options.body ?? null);
+        if (response && response.status !== undefined) return response;
+        throw new Error('fetchv2 returned error format');
     } catch (e) {
         try {
             return await fetch(url, options);
