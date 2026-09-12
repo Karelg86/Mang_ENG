@@ -1,0 +1,23 @@
+{
+  "sourceName": "MangaKatana ENG",
+  "iconUrl": "https://mangakatana.com/static/img/fav.png",
+  "author": {
+    "name": "Karelg86",
+    "icon": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQPQ1qIiALbM3xDWGsuJzu6ItaQGwb9ICRRw&s",
+    "url": "https://github.com/Karelg86"
+  },
+  "version": "1.0.0",
+  "language": "English",
+  "streamType": "novels",
+  "quality": "HD",
+  "baseUrl": "https://mangakatana.com/",
+  "searchBaseUrl": "https://mangakatana.com/manga?search=%s&search_by=book_name",
+  "scriptUrl": "https://raw.githubusercontent.com/Karelg86/Mang_ENG/main/extractor.js",
+  "type": "novels",
+  "asyncJS": true,
+  "novel": true,
+  "downloadSupport": false,
+  "supportsMojuru": false,
+  "supportsSora": true,
+  "supportsLuna": true
+}
