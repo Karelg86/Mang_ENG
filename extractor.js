@@ -145,3 +145,20 @@ async function soraFetch(url, options = { headers: {}, method: 'GET', body: null
         }
     }
 }
+
+// NUOVO CONTRATTO MANGA
+async function extractImages(url) {
+    try {
+        const response = await soraFetch(url);
+        const html = await response.text();
+        const thzqMatch = html.match(/var thzq\s*=\s*(\[[\s\S]*?\]);/);
+        if (thzqMatch) {
+            try {
+                return thzqMatch[1]; // È già un array JSON di stringhe!
+            } catch (_) {}
+        }
+        return JSON.stringify([]);
+    } catch (e) {
+        return JSON.stringify([]);
+    }
+}
