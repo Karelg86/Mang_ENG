@@ -141,7 +141,9 @@ async function extractImages(chapterId) {
         const thzqMatch = html.match(/var thzq\s*=\s*(\[[\s\S]*?\]);/);
         if (thzqMatch) {
             try {
-                const pages = JSON.parse(thzqMatch[1]);
+                // Sostituisci gli apici singoli con doppi apici per renderlo un JSON valido
+                const cleanArray = thzqMatch[1].replace(/'/g, '"');
+                const pages = JSON.parse(cleanArray);
                 console.log(`[MangaKatana][Images] ${pages.length} pages`);
                 return pages;
             } catch (_) {}
@@ -150,7 +152,8 @@ async function extractImages(chapterId) {
         const ytawMatch = html.match(/var ytaw\s*=\s*(\[[\s\S]*?\]);/);
         if (ytawMatch) {
             try {
-                const pages = JSON.parse(ytawMatch[1]);
+                const cleanArray = ytawMatch[1].replace(/'/g, '"');
+                const pages = JSON.parse(cleanArray);
                 console.log(`[MangaKatana][Images] ${pages.length} pages`);
                 return pages;
             } catch (_) {}
