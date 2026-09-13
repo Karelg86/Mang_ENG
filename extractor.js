@@ -1,22 +1,29 @@
-const _pageCache = new Map();
+// ==========================================
+// 📖 MODULE SORA — MANGAKATANA ENG (mangakatana.com)
+// Type: mangas. Conforme spec Sora/Luna/Shirox.
+// ==========================================
 
-async function _fetchPage(url) {
-    if (_pageCache.has(url)) return _pageCache.get(url);
-    const res = await soraFetch(url);
-    if (!res) return '';
-    const text = await res.text();
-    _pageCache.set(url, text);
-    return text;
-}
+const BASE_URL = "https://mangakatana.com";
 
-// FORMATO MANGA KANZEN
-async function searchResults(keyword, page = 0) {
+const HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Referer": `${BASE_URL}/`
+};
+
+// ==========================================
+// 1. RICERCA -> [{ id, title, imageURL }]
+// ==========================================
+
+async function searchResults(keyword, page) {
+    console.log(`[MangaKatana][Search] "${keyword}"`);
     try {
-        const response = await soraFetch(`https://mangakatana.com/manga?search=${encodeURIComponent(keyword)}&search_by=book_name`);
-        const html = await response.text();
+        const res = await soraFetch(`${BASE_URL}/manga?search=${encodeURIComponent(keyword)}&search_by=book_name`, { headers: HEADERS });
+        if (!res || typeof res.text !== "function") return [];
+        const html = await res.text();
+        if (!html) return [];
+
         const results = [];
         const seen = new Set();
-
         const hrefImgRegex = /href="(https:\/\/mangakatana\.com\/manga\/[^"]+)">\s*<img data-src="([^"]+)"/g;
         const titleRegex = /<h3 class="title">\s*<a href="([^"]+)">([^<]+)<\/a>/g;
         const imgs = {};
@@ -34,21 +41,31 @@ async function searchResults(keyword, page = 0) {
         for (const u of hrefs) {
             if (titles[u] && !seen.has(u)) {
                 seen.add(u);
-                // Usa 'id' e 'imageURL'
                 results.push({ id: u, title: titles[u].trim(), imageURL: imgs[u] });
             }
         }
 
-        return results; // ARRAY nativo
+        console.log(`[MangaKatana][Search] ${results.length} results`);
+        return results;
     } catch (e) {
+        console.log(`[MangaKatana][Search] ${e}`);
         return [];
     }
 }
 
-async function extractDetails(url) {
+// ==========================================
+// 2. DETAILS -> { description, tags }
+// ==========================================
+
+async function extractDetails(id) {
+    console.log(`[MangaKatana][Details] ${id}`);
     try {
-        const html = await _fetchPage(url);
-        let description = '';
+        const res = await soraFetch(id, { headers: HEADERS });
+        if (!res || typeof res.text !== "function") return { description: "Not available", tags: [] };
+        const html = await res.text();
+        if (!html) return { description: "Not available", tags: [] };
+
+        let description = "No description available.";
         const descMatch = html.match(/<div class="summary">\s*<p>([^<]+)<\/p>/);
         if (descMatch) {
             description = descMatch[1].trim();
@@ -56,15 +73,25 @@ async function extractDetails(url) {
             const metaMatch = html.match(/<meta name="description" content="([^"]+)"/);
             if (metaMatch) description = metaMatch[1].replace(/&amp;/g, '&').trim();
         }
-        return { description: description || 'No description available', tags: [] };
+        return { description, tags: [] };
     } catch (e) {
-        return { description: 'Error loading description', tags: [] };
+        console.log(`[MangaKatana][Details] ${e}`);
+        return { description: "Error loading description", tags: [] };
     }
 }
 
-async function extractChapters(url) {
+// ==========================================
+// 3. CHAPTERS -> { "label": [ [numStr, [{id,title,chapter,scanlation_group}]], ... ] }
+// ==========================================
+
+async function extractChapters(urlOrId) {
+    console.log(`[MangaKatana][Chapters] ${urlOrId}`);
     try {
-        const html = await _fetchPage(url);
+        const res = await soraFetch(urlOrId, { headers: HEADERS });
+        if (!res || typeof res.text !== "function") return {};
+        const html = await res.text();
+        if (!html) return {};
+
         const chapterRegex = /<div class="chapter">\s*<a href="(https:\/\/mangakatana\.com\/manga\/[^"]+)">([^<]+)<\/a>/g;
         const chapters = [];
         const seen = new Set();
@@ -77,48 +104,80 @@ async function extractChapters(url) {
                 seen.add(id);
                 const numMatch = rawTitle.match(/Chapter\s+([\d.]+)/i);
                 const number = numMatch ? parseFloat(numMatch[1]) : chapters.length + 1;
-                chapters.push({ id: id, title: rawTitle, chapter: number, scanlation_group: "MangaKatana" });
+                chapters.push({
+                    id: id,
+                    title: rawTitle,
+                    chapter: number,
+                    scanlation_group: "MangaKatana"
+                });
             }
         }
-        
+
         chapters.sort(function(a, b) { return a.chapter - b.chapter; });
 
-        const results = chapters.map(function(ch) {
-            return [
-                String(ch.chapter),
-                [ch]
-            ];
+        const entries = chapters.map(function(ch) {
+            return [String(ch.chapter), [ch]];
         });
 
-        return { en: results };
+        console.log(`[MangaKatana][Chapters] ${entries.length} chapters found`);
+        return { "English": entries };
     } catch (e) {
-        return { en: [] };
+        console.log(`[MangaKatana][Chapters] ${e}`);
+        return {};
     }
 }
 
-async function extractImages(url) {
+// ==========================================
+// 4. IMAGES -> [ "url", ... ]
+// ==========================================
+
+async function extractImages(chapterId) {
+    console.log(`[MangaKatana][Images] ${chapterId}`);
     try {
-        const response = await soraFetch(url);
-        const html = await response.text();
+        const res = await soraFetch(chapterId, { headers: HEADERS });
+        if (!res || typeof res.text !== "function") return [];
+        const html = await res.text();
+        if (!html) return [];
+
         const thzqMatch = html.match(/var thzq\s*=\s*(\[[\s\S]*?\]);/);
         if (thzqMatch) {
-            try { return JSON.parse(thzqMatch[1]); } catch (_) {}
+            try {
+                const pages = JSON.parse(thzqMatch[1]);
+                console.log(`[MangaKatana][Images] ${pages.length} pages`);
+                return pages;
+            } catch (_) {}
         }
+
         const ytawMatch = html.match(/var ytaw\s*=\s*(\[[\s\S]*?\]);/);
         if (ytawMatch) {
-            try { return JSON.parse(ytawMatch[1]); } catch (_) {}
+            try {
+                const pages = JSON.parse(ytawMatch[1]);
+                console.log(`[MangaKatana][Images] ${pages.length} pages`);
+                return pages;
+            } catch (_) {}
         }
+
         return [];
     } catch (e) {
+        console.log(`[MangaKatana][Images] ${e}`);
         return [];
     }
 }
 
+// ==========================================
+// SORA FETCH
+// ==========================================
+
 async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
+    const headers = options.headers || {};
+    if (!headers["User-Agent"]) {
+        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+    }
     try {
-        const response = await fetchv2(url, options.headers ?? {}, options.method ?? 'GET', options.body ?? null);
-        if (response && response.status !== undefined) return response;
-        throw new Error('fetchv2 returned error format');
+        if (typeof fetchv2 !== 'undefined') {
+            return await fetchv2(url, headers, options.method ?? 'GET', options.body ?? null, true, 'utf-8');
+        }
+        return await fetch(url, options);
     } catch (e) {
         try { return await fetch(url, options); } catch (error) { return null; }
     }
