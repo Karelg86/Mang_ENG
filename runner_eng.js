@@ -25,7 +25,7 @@ async function searchResults(keyword, page) {
 
         const seen = new Set();
         const hrefImgRegex = /href="(https:\/\/mangakatana\.com\/manga\/[^"]+)">\s*<img data-src="([^"]+)"/g;
-        const titleRegex = /<h3 class="title">\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
+        const titleRegex = /<h3 class="title">\s*<a href="([^"]+)">([^<]+)<\/a>/g;
         const imgs = {};
         const titles = {};
         const hrefs = [];
@@ -118,11 +118,17 @@ async function extractChapters(urlOrId) {
             }
         }
 
-        console.log(`[MangaKatana][Chapters] ${chapters.length} chapters found`);
-        return chapters;
+        chapters.sort(function(a, b) { return a.chapter - b.chapter; });
+
+        const entries = chapters.map(function(ch) {
+            return [String(ch.chapter), [ch]];
+        });
+
+        console.log(`[MangaKatana][Chapters] ${entries.length} chapters found`);
+        return { "English": entries };
     } catch (e) {
         console.log(`[MangaKatana][Chapters] ${e}`);
-        return [];
+        return {};
     }
 }
 
@@ -167,17 +173,4 @@ async function extractImages(chapterId) {
 // SORA FETCH
 // ==========================================
 
-async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
-    const headers = options.headers || {};
-    if (!headers["User-Agent"]) {
-        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-    }
-    try {
-        if (typeof fetchv2 !== 'undefined') {
-            return await fetchv2(url, headers, options.method ?? 'GET', options.body ?? null, true, 'utf-8');
-        }
-        return await fetch(url, options);
-    } catch (e) {
-        try { return await fetch(url, options); } catch (error) { return null; }
-    }
-}
+[object Promise][object Promise]
