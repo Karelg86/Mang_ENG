@@ -22,7 +22,7 @@ async function searchResults(keyword, page) {
         const html = await res.text();
         if (!html) return [];
 
-        const results = [];
+
         const seen = new Set();
         const hrefImgRegex = /href="(https:\/\/mangakatana\.com\/manga\/[^"]+)">\s*<img data-src="([^"]+)"/g;
         const titleRegex = /<h3 class="title">\s*<a href="([^"]+)">([^<]+)<\/a>/g;
