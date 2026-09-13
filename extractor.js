@@ -38,12 +38,17 @@ async function searchResults(keyword, page) {
         while ((m = titleRegex.exec(html)) !== null) {
             titles[m[1]] = m[2];
         }
+        const kw = keyword.toLowerCase().trim();
+        const allResults = [];
         for (const u of hrefs) {
             if (titles[u] && !seen.has(u)) {
                 seen.add(u);
-                results.push({ id: u, title: titles[u].trim(), imageURL: imgs[u] });
+                allResults.push({ id: u, title: titles[u].trim(), imageURL: imgs[u] });
             }
         }
+        // Filtra: mostra solo titoli che contengono la keyword
+        const filtered = allResults.filter(function(r) { return r.title.toLowerCase().indexOf(kw) !== -1; });
+        const results = filtered.length > 0 ? filtered : allResults;
 
         console.log(`[MangaKatana][Search] ${results.length} results`);
         return results;
