@@ -24,7 +24,7 @@ async function searchResults(keyword, page) {
 
 
         const seen = new Set();
-        const hrefImgRegex = /href="(https:\/\/mangakatana\.com\/manga\/[^"]+)">\s*<img data-src="([^"]+)"/g;
+        const hrefImgRegex = /href="(https:\/\/mangakatana\.com\/manga\/[^"/]+)"[^>]*>(?:(?!<div)[\s\S])*?(?:data-src|srcset|src)="([^"]+)"/ig;
         const titleRegex = /<h3 class="title">\s*<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g;
         const imgs = {};
         const titles = {};
