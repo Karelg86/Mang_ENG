@@ -1,17 +1,17 @@
 {
   "sourceName": "MangaKatana ENG",
   "iconURL": "https://mangakatana.com/favicon.ico",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "language": "English",
   "languageType": [
     "Translated"
   ],
-  "scriptURL": "https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/mangakatana_extractor.js",
+  "scriptURL": "https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/mangakatana_v2.js",
   "author": {
     "name": "Karelg86",
     "iconURL": "https://github.com/Karelg86.png"
   },
   "type": "mangas",
   "baseURL": "https://mangakatana.com/",
-  "searchBaseURL": "https://mangakatana.com/manga?search=%s&search_by=book_name"
+  "searchBaseURL": "https://mangakatana.com/?search=%s&search_by=m_name"
 }
