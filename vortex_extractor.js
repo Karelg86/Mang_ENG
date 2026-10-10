@@ -6,7 +6,7 @@
 const BASE_URL = "https://vortexscans.org";
 
 const HEADERS = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Referer": `${BASE_URL}/`
 };
 
@@ -15,9 +15,14 @@ const HEADERS = {
 // ==========================================
 
 async function searchResults(keyword, page) {
-    console.log(`[VortexScans][Search] "${keyword}"`);
+    const rawKw = keyword ? String(keyword).trim() : "";
+    console.log(`[VortexScans][Search] "${rawKw}"`);
     try {
-        const url = `${BASE_URL}/series?searchTerm=${encodeURIComponent(keyword)}`;
+        // NOTA: Lo slash finale in /series/ è OBBLIGATORIO per evitare redirect 301 insicuri verso http://
+        const url = rawKw.length > 0 
+            ? `${BASE_URL}/series/?searchTerm=${encodeURIComponent(rawKw)}`
+            : `${BASE_URL}/series/`;
+
         const res = await soraFetch(url, { headers: HEADERS });
         if (!res || typeof res.text !== "function") return [];
         const html = await res.text();
@@ -26,28 +31,27 @@ async function searchResults(keyword, page) {
         const results = [];
         const seen = new Set();
 
-        const regex = /slug:"([a-z0-9\-]+)",postTitle:"([^"]+)"(?:(?!"slug").)*?featuredImage:"([^"]+)"/g;
+        const regex = /slug:"([a-z0-9\-]+)",postTitle:"([^"]+)"/g;
         let m;
         while ((m = regex.exec(html)) !== null) {
             const slug = m[1];
             const title = m[2].trim();
-            const img = m[3].trim();
-            if (!seen.has(slug)) {
-                seen.add(slug);
-                results.push({
-                    id: `${BASE_URL}/series/${slug}`,
-                    title: title,
-                    imageURL: img
-                });
-            }
+            if (seen.has(slug)) continue;
+            seen.add(slug);
+
+            const slice = html.substring(Math.max(0, m.index - 200), Math.min(html.length, m.index + 500));
+            const imgMatch = slice.match(/featuredImage:"([^"]+)"/);
+            const img = imgMatch ? imgMatch[1].trim() : "";
+
+            results.push({
+                id: `${BASE_URL}/series/${slug}`,
+                title: title,
+                imageURL: img
+            });
         }
 
-        const kw = keyword.toLowerCase().trim();
-        const filtered = results.filter(r => r.title.toLowerCase().includes(kw));
-        const finalResults = filtered.length > 0 ? filtered : results;
-
-        console.log(`[VortexScans][Search] ${finalResults.length} results`);
-        return finalResults;
+        console.log(`[VortexScans][Search] ${results.length} results found`);
+        return results;
     } catch (e) {
         console.log(`[VortexScans][Search] ${e}`);
         return [];
@@ -214,7 +218,7 @@ async function extractImages(chapterId) {
 async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
     const headers = options.headers || {};
     if (!headers["User-Agent"]) {
-        headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1";
+        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     }
     try {
         if (typeof fetchv2 !== 'undefined') {
