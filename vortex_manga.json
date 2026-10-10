@@ -1,0 +1,17 @@
+{
+  "sourceName": "Vortex Scans",
+  "iconURL": "https://vortexscans.org/favicon.ico",
+  "version": "1.0.0",
+  "language": "English",
+  "languageType": [
+    "Scanlation"
+  ],
+  "scriptURL": "https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/vortex_extractor.js",
+  "author": {
+    "name": "Karelg86",
+    "iconURL": "https://github.com/Karelg86.png"
+  },
+  "type": "mangas",
+  "baseURL": "https://vortexscans.org/",
+  "searchBaseURL": "https://vortexscans.org/series?searchTerm=%s"
+}
