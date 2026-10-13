@@ -130,6 +130,10 @@ async function extractChapters(urlOrId) {
             const chapSlug = m[1];
             const num = parseFloat(m[2]);
             const extraTitle = m[3] ? m[3].trim() : "";
+            // Capitoli a pagamento (coins): aperti mostrano solo l'immagine "bloccato"
+            const nextChap = html.indexOf('slug:"chapter-', m.index + 1);
+            const fields = html.substring(m.index, nextChap !== -1 ? Math.min(nextChap, m.index + 1500) : m.index + 1500);
+            if (/isLocked:!0/.test(fields)) continue;
             if (!seen.has(chapSlug)) {
                 seen.add(chapSlug);
                 const title = extraTitle ? `Chapter ${num}: ${extraTitle}` : `Chapter ${num}`;

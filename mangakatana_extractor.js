@@ -130,19 +130,34 @@ async function extractChapters(urlOrId) {
             const rawTitle = match[2].trim();
             if (!seen.has(id)) {
                 seen.add(id);
-                const numMatch = rawTitle.match(/Chapter\s+([\d.]+)/i);
-                const number = numMatch ? parseFloat(numMatch[1]) : chapters.length + 1;
+                // Titolo, altrimenti l'URL (/c18.5): gli extra "Vol.5 Side Story…" non hanno "Chapter N"
+                const numMatch = rawTitle.match(/Chapter\s+(\d+(?:\.\d+)?)/i) || id.match(/\/c(\d+(?:\.\d+)?)\/?$/);
+                const label = numMatch ? numMatch[1] : String(chapters.length + 1);
                 chapters.push({
                     id: id,
                     title: rawTitle,
-                    chapter: number,
-                    scanlation_group: "MangaKatana"
+                    chapter: parseFloat(label),
+                    scanlation_group: "MangaKatana",
+                    label: label
                 });
             }
         }
 
+        // Sotto-capitoli numerati 0.1 … 0.16 (prologo di Berserk): "0.10" non è 0.1.
+        // Se il manga usa decimali a 2+ cifre, la parte dopo il punto è un indice intero.
+        if (chapters.some(function(ch) { return /\.\d{2,}$/.test(ch.label); })) {
+            chapters.forEach(function(ch) {
+                const parts = ch.label.split('.');
+                if (parts.length === 2) ch.chapter = parseInt(parts[0], 10) + parseInt(parts[1], 10) / 1000;
+            });
+        }
+
         chapters.sort(function(a, b) { return a.chapter - b.chapter; });
-        const entries = chapters.map(function(ch) { return [String(ch.chapter), [ch]]; });
+        const entries = chapters.map(function(ch) {
+            const label = ch.label;
+            delete ch.label;
+            return [label, [ch]];
+        });
         console.log(`[MangaKatana][Chapters] ${entries.length} chapters found`);
         return { "English": entries };
     } catch (e) {

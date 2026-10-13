@@ -32,7 +32,9 @@ Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-13.
    - **Nessun risultato** → `[]` (la pagina contiene "Not found any results.")
    - Nessun filtro per keyword: il sito trova anche per titolo alternativo (es. "shingeki no kyojin" → "Attack on Titan")
 2. **`extractDetails(url)`** — `div.summary > p`, fallback meta description
-3. **`extractChapters(url)`** — `div.chapter > a` dentro `div.chapters`, ritorna `{ "English": [[num, [capitolo]]] }`
+3. **`extractChapters(url)`** — `div.chapter > a` dentro `div.chapters`, ritorna `{ "English": [[label, [capitolo]]] }`
+   - Numero dal titolo ("Chapter N"), altrimenti dall'URL (`/c18.5`): gli extra tipo "Vol.5 Side Story…" non hanno "Chapter N"
+   - ⚠️ Sotto-capitoli a 2 cifre (prologo Berserk 0.1 … 0.16): "0.10" NON è 0.1. Se il manga ha decimali a 2+ cifre, la parte dopo il punto è un indice intero (ordinamento con int + sub/1000, etichetta originale "0.10")
 4. **`extractImages(url)`** — array JS `var thzq=[...]`, fallback `var ytaw=[...]`
 
 Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../{slug}.{id}/c{num}`
@@ -43,6 +45,8 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
    - Dati estratti dal payload JS della pagina: `slug:"...",postTitle:"..."`, cover da `featuredImage`
    - ⚠️ Gli slug possono contenere apostrofi (`the-veteran-swordmaster's-stream`) e i titoli caratteri escapati: le stringhe vengono lette per intero e de-escapate
 2. **`extractDetails`**, **`extractChapters`**, **`extractImages`** — dal payload JS delle pagine serie/capitolo
+   - ⚠️ I capitoli a pagamento (`isLocked:!0`, `price` in coins) vengono esclusi: aperti mostrano solo l'immagine "bloccato"
+   - Il sito limita le richieste ravvicinate (connessione resettata): una ricerca vuota va riprovata prima di considerarla un errore
 
 ---
 
@@ -64,6 +68,10 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 ---
 
 ## 📜 Storico
+
+- **2026-10-13 — MangaKatana 1.0.3**: ordine capitoli corretto per i sotto-capitoli a 2 cifre (Berserk 0.10 era duplicato di 0.1 e 0.11–0.16 finivano prima di 0.2); extra senza "Chapter N" numerati dall'URL (prima si sovrapponevano a capitoli veri, es. Attack on Titan 124/134)
+- **2026-10-13 — Vortex Scans 1.0.3**: esclusi i capitoli bloccati a pagamento
+- **Verifica 2026-10-13** (siti reali): ricerca → capitoli → pagine OK su capitolo primo/medio/ultimo, immagini HTTP 200. MangaKatana: Berserk, Overgeared, Solo Leveling, One Piece, Attack on Titan, Naruto, Kimetsu no Yaiba, Dandadan. Vortex: Kidnapped Dragons, Murim Psychopath, Solo Swordmaster, The Veteran Swordmaster's Stream, Absolute Domination, Bill The Blacksmith, Regressed Blood Demon, Extra of a Crazy World
 
 - **2026-10-13 — MangaKatana 1.0.2**: gestione redirect con un solo risultato (prima mostrava manga a caso); ricerca senza risultati ora vuota (prima 36 manga a caso + voce `'+title+'`); esclusi i widget dopo la lista; rimosso filtro keyword (perdeva i titoli trovati per nome alternativo); decodifica entità HTML
 - **2026-10-13 — Vortex Scans 1.0.2**: trovati anche i titoli con apostrofo nello slug; titoli con caratteri escapati decodificati
