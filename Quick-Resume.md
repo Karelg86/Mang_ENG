@@ -1,65 +1,72 @@
-# 🔄 Quick-Resume: Modulo MangaKatana ENG per Sora/Shirox
+# 🔄 Quick-Resume: Moduli MangaKatana ENG e Vortex Scans per Shirox
 
-Manuale di riferimento creato il 2026-09-12.
+Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-13.
 
 ## 📦 Repository
 
-- **Repository GitHub:** `https://github.com/Karelg86/Mang_ENG`
-- **URL modulo per Shirox/Sora:** `https://raw.githubusercontent.com/Karelg86/Mang_ENG/main/main.json`
-- **Cartella locale:** `d:\Sora_Sulfur\MangENG_Git\`
+- **Repository GitHub:** `https://github.com/Karelg86/Mang_ENG` (branch `master`)
+- **Cartella locale:** `C:\Users\kelgazzar\Desktop\Nuova cartella (4)\Mang_ENG\` (clone git)
+- **URL moduli per Shirox:**
+  - MangaKatana: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/mangeng_manga.json`
+  - Vortex Scans: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/vortex_manga.json`
 
 ## 📄 File nel repository
 
 | File | Descrizione |
 |------|-------------|
-| `main.json` | Configurazione del modulo (sourceName, baseUrl, searchBaseUrl, scriptUrl) |
-| `extractor.js` | Script di estrazione: ricerca, dettagli, capitoli e pagine immagini |
-| `Quick-Resume.md` | Questo file |
+| `mangeng_manga.json` | **Manifest MangaKatana in uso** (`type: mangas`) → punta a `mangakatana_v2.js` |
+| `mangakatana_v2.js` | Script MangaKatana usato da Shirox |
+| `mangakatana_extractor.js` | Copia identica di `mangakatana_v2.js` (tenerle allineate) |
+| `vortex_manga.json` | **Manifest Vortex Scans in uso** → punta a `vortex_extractor_v2.js` |
+| `vortex_extractor_v2.js` | Script Vortex usato da Shirox |
+| `vortex_extractor.js` | Copia identica di `vortex_extractor_v2.js` (tenerle allineate) |
+| `main.json`, `mangeng.json`, `manganov.json` | ⚠️ Obsoleti: `type: novels` e `scriptUrl` verso `extractor.js` che non esiste (404). Non usarli |
 
 ---
 
-## ⚙️ Architettura tecnica MangaKatana
+## ⚙️ MangaKatana (`mangakatana_v2.js`)
 
-### Funzioni dell'extractor
+1. **`searchResults(keyword)`** — GET `/?search={kw}&search_by=m_name`
+   - Analizza solo la lista `id="book_list"` fino a `id="col_right"`: dopo ci sono i widget (`hot_book`) con lo stesso markup `<div class="item"`
+   - **Un solo risultato** → il sito reindirizza alla pagina del manga (niente `book_list`): si usa `<link rel="canonical">`, `<h1 class="heading">` e `og:image`
+   - **Nessun risultato** → `[]` (la pagina contiene "Not found any results.")
+   - Nessun filtro per keyword: il sito trova anche per titolo alternativo (es. "shingeki no kyojin" → "Attack on Titan")
+2. **`extractDetails(url)`** — `div.summary > p`, fallback meta description
+3. **`extractChapters(url)`** — `div.chapter > a` dentro `div.chapters`, ritorna `{ "English": [[num, [capitolo]]] }`
+4. **`extractImages(url)`** — array JS `var thzq=[...]`, fallback `var ytaw=[...]`
 
-1. **`searchResults(keyword)`** — Cerca su `/manga?search={keyword}&search_by=book_name`, regex su `div.wrap_img > a + h3.title`
-2. **`extractDetails(url)`** — Descrizione da `div.summary > p`, fallback meta description
-3. **`extractChapters(url)`** — Lista capitoli da `div.chapter > a href`, ordine invertito (crescente)
-4. **`extractText(url)`** — Pagine immagini dall'array JS `var thzq=[...]` nella pagina capitolo (metodo primario verificato)
+Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../{slug}.{id}/c{num}`
 
-### Tipo modulo
-- `"novel": true` — il player usa `extractChapters` + `extractText` (NON `extractStreamUrl`)
-- `"streamType": "novels"` — visualizzatore immagini/testo
+## ⚙️ Vortex Scans (`vortex_extractor_v2.js`)
 
-### Struttura URL MangaKatana
-- Manga: `https://mangakatana.com/manga/{slug}.{id}`
-- Capitolo: `https://mangakatana.com/manga/{slug}.{id}/{chapId}` (es. `c100`, `c1.5`)
-
-### ⚠️ Nota tecnica: immagini capitoli
-Le immagini non sono nell'HTML diretto ma in un array JavaScript:
-```javascript
-var thzq = ['https://url1.jpg', 'https://url2.jpg', ...];
-```
-`soraFetch` (URLSession) riesce a leggere questo contenuto. Se non funzionasse, sarebbe necessario `networkFetchNative` (WebView).
+1. **`searchResults(keyword)`** — GET `/series/?searchTerm={kw}` (lo **slash finale in `/series/` è obbligatorio**, altrimenti redirect 301 verso http)
+   - Dati estratti dal payload JS della pagina: `slug:"...",postTitle:"..."`, cover da `featuredImage`
+   - ⚠️ Gli slug possono contenere apostrofi (`the-veteran-swordmaster's-stream`) e i titoli caratteri escapati: le stringhe vengono lette per intero e de-escapate
+2. **`extractDetails`**, **`extractChapters`**, **`extractImages`** — dal payload JS delle pagine serie/capitolo
 
 ---
 
-## 📝 Procedura di aggiornamento dominio
+## 🔁 Procedura di aggiornamento del modulo
 
-Quando il dominio di MangaKatana cambia:
+1. Modificare lo script (`*_v2.js`) e copiarlo anche nella versione senza `_v2`
+2. **Aumentare `"version"` nel manifest** (`mangeng_manga.json` o `vortex_manga.json`). Senza questo Shirox NON vede l'aggiornamento
+3. Commit + push su `master`
+4. **Aspettare ~10 minuti** (GitHub raw ha cache `max-age=300`, anche iOS la rispetta)
+5. In Shirox: chiudere l'app dal multitasking e riaprirla → aggiornamento automatico all'avvio
+6. Se non si aggiorna: ricaricare il modulo a mano (metodo sicuro)
 
-1. **`main.json`** — aggiornare `baseUrl`, `searchBaseUrl`, `iconUrl`
-2. **`extractor.js`** — sostituire tutte le stringhe con il vecchio dominio
-3. **Push:**
-   ```bash
-   cd d:\Sora_Sulfur\MangENG_Git
-   git add .
-   git commit -m "Aggiornato dominio a NUOVO_DOMINIO"
-   git push
-   ```
-4. Ricaricare il modulo in Shirox/Sora
+## 📝 Cambio dominio
+
+1. Manifest — `baseURL`, `searchBaseURL`, `iconURL` + **aumentare `version`**
+2. Script — `BASE_URL` in cima al file
+3. Seguire la procedura di aggiornamento sopra
 
 ---
 
-**Dominio corrente configurato nei file:** `mangakatana.com`
+## 📜 Storico
+
+- **2026-10-13 — MangaKatana 1.0.2**: gestione redirect con un solo risultato (prima mostrava manga a caso); ricerca senza risultati ora vuota (prima 36 manga a caso + voce `'+title+'`); esclusi i widget dopo la lista; rimosso filtro keyword (perdeva i titoli trovati per nome alternativo); decodifica entità HTML
+- **2026-10-13 — Vortex Scans 1.0.2**: trovati anche i titoli con apostrofo nello slug; titoli con caratteri escapati decodificati
+
+**Domini correnti configurati nei file:** `mangakatana.com`, `vortexscans.org`
 *(Mantenere quest'ultima riga aggiornata a ogni sostituzione)*

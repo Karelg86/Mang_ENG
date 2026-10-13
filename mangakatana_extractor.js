@@ -23,7 +23,19 @@ async function searchResults(keyword, page) {
         const html = await res.text();
         if (!html) return [];
 
-        const bookList = html.split('id="book_list"')[1] || html;
+        const listStart = html.indexOf('id="book_list"');
+        if (listStart === -1) {
+            // Un solo risultato: MangaKatana reindirizza direttamente alla pagina del manga.
+            const mCanon = html.match(/<link rel="canonical" href="([^"]*\/manga\/[^"]+)"/);
+            const mTitle = html.match(/<h1 class="heading">([^<]+)/);
+            if (!mCanon || !mTitle) return [];
+            const mCover = html.match(/<meta property="og:image" content="([^"]+)"/);
+            return [{ id: mCanon[1].trim(), title: decodeEntities(mTitle[1].trim()), imageURL: mCover ? mCover[1].trim() : "" }];
+        }
+        // Solo la lista risultati: dopo col_right ci sono i widget ("hot_book")
+        // con lo stesso markup, che finivano tra i risultati.
+        const listEnd = html.indexOf('id="col_right"', listStart);
+        const bookList = html.slice(listStart, listEnd !== -1 ? listEnd : undefined);
         const items = bookList.split('<div class="item"');
         const results = [];
         const seen = new Set();
@@ -34,7 +46,7 @@ async function searchResults(keyword, page) {
             if (!mTitle) continue;
 
             const id = mTitle[1].trim();
-            const title = mTitle[2].trim();
+            const title = decodeEntities(mTitle[2].trim());
 
             if (seen.has(id)) continue;
             seen.add(id);
@@ -48,16 +60,22 @@ async function searchResults(keyword, page) {
             results.push({ id: id, title: title, imageURL: img });
         }
 
-        const kw = keyword.toLowerCase().trim();
-        const filtered = results.filter(function(r) { return r.title.toLowerCase().indexOf(kw) !== -1; });
-        const finalResults = filtered.length > 0 ? filtered : results;
-
-        console.log(`[MangaKatana][Search] ${finalResults.length} results`);
-        return finalResults;
+        // Nessun filtro sul titolo: il sito trova anche per titolo alternativo
+        // (es. "shingeki no kyojin" -> "Attack on Titan").
+        console.log(`[MangaKatana][Search] ${results.length} results`);
+        return results;
     } catch (e) {
         console.log(`[MangaKatana][Search] ${e}`);
         return [];
     }
+}
+
+function decodeEntities(str) {
+    return str
+        .replace(/&#(\d+);/g, function(_, n) { return String.fromCharCode(parseInt(n, 10)); })
+        .replace(/&#x([0-9a-f]+);/gi, function(_, n) { return String.fromCharCode(parseInt(n, 16)); })
+        .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 }
 
 // ==========================================

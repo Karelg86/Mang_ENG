@@ -31,11 +31,13 @@ async function searchResults(keyword, page) {
         const results = [];
         const seen = new Set();
 
-        const regex = /slug:"([a-z0-9\-]+)",postTitle:"([^"]+)"/g;
+        // Gli slug possono contenere apostrofi (the-veteran-swordmaster's-stream)
+        // e i titoli caratteri escapati (\" ’): stringhe JS lette per intero.
+        const regex = /slug:"((?:[^"\\]|\\.)+)",postTitle:"((?:[^"\\]|\\.)+)"/g;
         let m;
         while ((m = regex.exec(html)) !== null) {
-            const slug = m[1];
-            const title = m[2].trim();
+            const slug = unescapeJs(m[1]);
+            const title = unescapeJs(m[2]).trim();
             if (seen.has(slug)) continue;
             seen.add(slug);
 
@@ -56,6 +58,11 @@ async function searchResults(keyword, page) {
         console.log(`[VortexScans][Search] ${e}`);
         return [];
     }
+}
+
+function unescapeJs(str) {
+    try { return JSON.parse('"' + str.replace(/\\x([0-9a-f]{2})/gi, '\\u00$1') + '"'); }
+    catch (e) { return str; }
 }
 
 // ==========================================
