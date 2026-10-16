@@ -1,11 +1,11 @@
 # 🔄 Quick-Resume: Moduli MangaKatana ENG e Vortex Scans per Shirox
 
-Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-13.
+Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-16.
 
 ## 📦 Repository
 
 - **Repository GitHub:** `https://github.com/Karelg86/Mang_ENG` (branch `master`)
-- **Cartella locale:** `C:\Users\kelgazzar\Desktop\Nuova cartella (4)\Mang_ENG\` (clone git)
+- **Cartella locale:** `C:\Users\kelgazzar\Documents\00_Kappa\17_Repository\Repository_Kappa\Mang_ENG\` (clone git)
 - **URL moduli per Shirox:**
   - MangaKatana: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/mangeng_manga.json`
   - Vortex Scans: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/vortex_manga.json`
@@ -48,6 +48,10 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
    - ⚠️ I capitoli a pagamento (`isLocked:!0`, `price` in coins) vengono esclusi: aperti mostrano solo l'immagine "bloccato"
    - Il sito limita le richieste ravvicinate (connessione resettata): una ricerca vuota va riprovata prima di considerarla un errore
 
+## Rete debole (`soraFetch`)
+- Ogni richiesta viene ritentata fino a **3 volte** (pausa 1 s, poi 2 s) se la rete fallisce o il server risponde 5xx/429/408; stop dopo ~50 s (Shirox concede 120 s a ogni funzione del modulo)
+- Le **immagini** le scarica Shirox (Kingfisher, timeout 15 s, nessun retry): il modulo non può intervenire. Se una pagina non carica: "Tap to retry" sulla pagina
+
 ---
 
 ## 🔁 Procedura di aggiornamento del modulo
@@ -69,6 +73,7 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 
 ## 📜 Storico
 
+- **2026-10-16 — MangaKatana 1.0.4 / Vortex Scans 1.0.4**: retry delle richieste in `soraFetch` (rete 4G/E e reset di connessione di Vortex): prima un errore di rete dava subito "No pages found". Backup pre-modifica in `Repository_Kappa\_backup\2026-10-16_pre-retry\`
 - **2026-10-13 — MangaKatana 1.0.3**: ordine capitoli corretto per i sotto-capitoli a 2 cifre (Berserk 0.10 era duplicato di 0.1 e 0.11–0.16 finivano prima di 0.2); extra senza "Chapter N" numerati dall'URL (prima si sovrapponevano a capitoli veri, es. Attack on Titan 124/134)
 - **2026-10-13 — Vortex Scans 1.0.3**: esclusi i capitoli bloccati a pagamento
 - **Verifica 2026-10-13** (siti reali): ricerca → capitoli → pagine OK su capitolo primo/medio/ultimo, immagini HTTP 200. MangaKatana: Berserk, Overgeared, Solo Leveling, One Piece, Attack on Titan, Naruto, Kimetsu no Yaiba, Dandadan. Vortex: Kidnapped Dragons, Murim Psychopath, Solo Swordmaster, The Veteran Swordmaster's Stream, Absolute Domination, Bill The Blacksmith, Regressed Blood Demon, Extra of a Crazy World

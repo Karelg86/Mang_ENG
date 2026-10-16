@@ -226,7 +226,30 @@ async function extractImages(chapterId) {
 // SORA FETCH HELPER
 // ==========================================
 
+// Rete debole (4G/E): una richiesta fallita o con errore del server viene ritentata,
+// invece di arrivare a Shirox come lista vuota ("No pages found") al primo errore.
+// Il limite di tempo resta sotto i 120 s che Shirox concede a ogni funzione del modulo.
+const FETCH_ATTEMPTS = 3;
+const FETCH_TIME_BUDGET_MS = 50000;
+
 async function soraFetch(url, options = { headers: {}, method: 'GET', body: null }) {
+    const started = Date.now();
+    let res = null;
+    for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+        res = await soraFetchOnce(url, options);
+        if (res && !(res.status >= 500 || res.status === 429 || res.status === 408)) return res;
+        if (attempt === FETCH_ATTEMPTS || Date.now() - started > FETCH_TIME_BUDGET_MS) break;
+        console.log(`[soraFetch] tentativo ${attempt} fallito (${res ? res.status : 'rete'}), riprovo: ${url}`);
+        await sleep(1000 * attempt);
+    }
+    return res;
+}
+
+function sleep(ms) {
+    return new Promise(function(resolve) { setTimeout(resolve, ms); });
+}
+
+async function soraFetchOnce(url, options) {
     const headers = options.headers || {};
     if (!headers["User-Agent"]) {
         headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
