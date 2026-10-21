@@ -85,9 +85,7 @@ function decodeEntities(str) {
 async function extractDetails(id) {
     console.log(`[MangaKatana][Details] ${id}`);
     try {
-        const res = await soraFetch(id, { headers: HEADERS });
-        if (!res || typeof res.text !== "function") return { description: "Not available", tags: [] };
-        const html = await res.text();
+        const html = await fetchHtmlCached(id, HEADERS);
         if (!html) return { description: "Not available", tags: [] };
 
         let description = "No description available.";
@@ -112,9 +110,7 @@ async function extractDetails(id) {
 async function extractChapters(urlOrId) {
     console.log(`[MangaKatana][Chapters] ${urlOrId}`);
     try {
-        const res = await soraFetch(urlOrId, { headers: HEADERS });
-        if (!res || typeof res.text !== "function") return {};
-        const html = await res.text();
+        const html = await fetchHtmlCached(urlOrId, HEADERS);
         if (!html) return {};
 
         const chSectionMatch = html.match(/<div class="chapters">([\s\S]*?)<\/table>/);
@@ -199,6 +195,49 @@ async function extractImages(chapterId) {
         console.log(`[MangaKatana][Images] ${e}`);
         return [];
     }
+}
+
+// ==========================================
+// CACHE HTML
+// ==========================================
+
+// Shirox apre la scheda chiamando extractDetails e poi extractChapters sulla stessa
+// pagina: la seconda chiamata la legge da qui invece di riscaricarla. Il contesto JS
+// resta vivo finché il modulo è attivo; si salvano solo pagine complete (niente
+// errori, manutenzione o sfide Cloudflare). Le pagine dei capitoli non passano da
+// qui: i link alle immagini contengono token temporanei.
+const HTML_CACHE_TTL_MS = 5 * 60 * 1000;
+const HTML_CACHE_MAX = 20;
+const htmlCache = new Map();
+const htmlInFlight = new Map();
+
+async function fetchHtmlCached(url, headers) {
+    const hit = htmlCache.get(url);
+    if (hit && Date.now() - hit.time < HTML_CACHE_TTL_MS) {
+        console.log(`[Cache] hit ${url}`);
+        return hit.html;
+    }
+    if (hit) htmlCache.delete(url);
+    if (htmlInFlight.has(url)) return htmlInFlight.get(url);
+
+    const request = (async function() {
+        const res = await soraFetch(url, { headers: headers });
+        if (!res || typeof res.text !== "function") return null;
+        const html = await res.text();
+        if (isCacheableHtml(res, html)) {
+            if (htmlCache.size >= HTML_CACHE_MAX) htmlCache.delete(htmlCache.keys().next().value);
+            htmlCache.set(url, { html: html, time: Date.now() });
+        }
+        return html;
+    })();
+    htmlInFlight.set(url, request);
+    try { return await request; } finally { htmlInFlight.delete(url); }
+}
+
+function isCacheableHtml(res, html) {
+    if (!html || html.length < 1000) return false;
+    if (res.status && (res.status < 200 || res.status >= 300)) return false;
+    return !/_cf_chl_opt|<title>Just a moment/i.test(html);
 }
 
 // ==========================================

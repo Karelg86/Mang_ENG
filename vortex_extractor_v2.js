@@ -73,9 +73,7 @@ async function extractDetails(id) {
     console.log(`[VortexScans][Details] ${id}`);
     try {
         const fullUrl = id.startsWith("http") ? id : `${BASE_URL}/series/${id}`;
-        const res = await soraFetch(fullUrl, { headers: HEADERS });
-        if (!res || typeof res.text !== "function") return { description: "Not available", tags: [] };
-        const html = await res.text();
+        const html = await fetchHtmlCached(fullUrl, HEADERS);
         if (!html) return { description: "Not available", tags: [] };
 
         let description = "No description available.";
@@ -113,9 +111,7 @@ async function extractChapters(urlOrId) {
     console.log(`[VortexScans][Chapters] ${urlOrId}`);
     try {
         const fullUrl = urlOrId.startsWith("http") ? urlOrId : `${BASE_URL}/series/${urlOrId}`;
-        const res = await soraFetch(fullUrl, { headers: HEADERS });
-        if (!res || typeof res.text !== "function") return {};
-        const html = await res.text();
+        const html = await fetchHtmlCached(fullUrl, HEADERS);
         if (!html) return {};
 
         const seriesSlugMatch = fullUrl.match(/\/series\/([^\/\?#]+)/);
@@ -202,16 +198,17 @@ async function extractImages(chapterId) {
             orderPages.sort((a, b) => a.order - b.order);
             const seen = new Set();
             for (const p of orderPages) {
-                if (!seen.has(p.url)) {
-                    seen.add(p.url);
-                    pages.push(p.url);
+                const url = directImageUrl(p.url);
+                if (!seen.has(url)) {
+                    seen.add(url);
+                    pages.push(url);
                 }
             }
         }
 
         if (pages.length === 0) {
-            const rawImgs = [...new Set([...html.matchAll(/https?:\/\/(?:storage\.vortexscans\.org|i\d\.wp\.com\/storage\.vortexscans\.org)\/upload\/series\/[^\s"'<>]+\.(?:webp|png|jpg|jpeg)/gi)].map(m => m[0]))];
-            pages = rawImgs.map(u => u.replace(/^https?:\/\/i\d\.wp\.com\//, 'https://'));
+            const rawImgs = [...new Set([...html.matchAll(/https?:\/\/(?:storage\.vortexscans\.org|i\d\.wp\.com\/storage\.vortexscans\.org)\/upload\/series\/[^\s"'<>]+\.(?:webp|png|jpg|jpeg)/gi)].map(m => directImageUrl(m[0])))];
+            pages = rawImgs;
         }
 
         console.log(`[VortexScans][Images] ${pages.length} pages found`);
@@ -220,6 +217,55 @@ async function extractImages(chapterId) {
         console.log(`[VortexScans][Images] ${e}`);
         return [];
     }
+}
+
+// Il proxy WordPress Photon (i0.wp.com) ricodifica ogni immagine prima di servirla:
+// lo storage diretto è più veloce e leggero (WebP originale, cache Cloudflare).
+function directImageUrl(url) {
+    const m = url.match(/^https?:\/\/i\d\.wp\.com\/(storage\.vortexscans\.org\/[^?#]+)/i);
+    return m ? `https://${m[1]}` : url;
+}
+
+// ==========================================
+// CACHE HTML
+// ==========================================
+
+// Shirox apre la scheda chiamando extractDetails e poi extractChapters sulla stessa
+// pagina: la seconda chiamata la legge da qui invece di riscaricarla. Il contesto JS
+// resta vivo finché il modulo è attivo; si salvano solo pagine complete (niente
+// errori, manutenzione o sfide Cloudflare).
+const HTML_CACHE_TTL_MS = 5 * 60 * 1000;
+const HTML_CACHE_MAX = 20;
+const htmlCache = new Map();
+const htmlInFlight = new Map();
+
+async function fetchHtmlCached(url, headers) {
+    const hit = htmlCache.get(url);
+    if (hit && Date.now() - hit.time < HTML_CACHE_TTL_MS) {
+        console.log(`[Cache] hit ${url}`);
+        return hit.html;
+    }
+    if (hit) htmlCache.delete(url);
+    if (htmlInFlight.has(url)) return htmlInFlight.get(url);
+
+    const request = (async function() {
+        const res = await soraFetch(url, { headers: headers });
+        if (!res || typeof res.text !== "function") return null;
+        const html = await res.text();
+        if (isCacheableHtml(res, html)) {
+            if (htmlCache.size >= HTML_CACHE_MAX) htmlCache.delete(htmlCache.keys().next().value);
+            htmlCache.set(url, { html: html, time: Date.now() });
+        }
+        return html;
+    })();
+    htmlInFlight.set(url, request);
+    try { return await request; } finally { htmlInFlight.delete(url); }
+}
+
+function isCacheableHtml(res, html) {
+    if (!html || html.length < 1000) return false;
+    if (res.status && (res.status < 200 || res.status >= 300)) return false;
+    return !/_cf_chl_opt|<title>Just a moment/i.test(html);
 }
 
 // ==========================================
