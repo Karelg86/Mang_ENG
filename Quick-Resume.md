@@ -1,6 +1,6 @@
 # 🔄 Quick-Resume: Moduli MangaKatana ENG e Vortex Scans per Shirox
 
-Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-16.
+Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-21.
 
 ## 📦 Repository
 
@@ -36,6 +36,8 @@ Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-16.
    - Numero dal titolo ("Chapter N"), altrimenti dall'URL (`/c18.5`): gli extra tipo "Vol.5 Side Story…" non hanno "Chapter N"
    - ⚠️ Sotto-capitoli a 2 cifre (prologo Berserk 0.1 … 0.16): "0.10" NON è 0.1. Se il manga ha decimali a 2+ cifre, la parte dopo il punto è un indice intero (ordinamento con int + sub/1000, etichetta originale "0.10")
 4. **`extractImages(url)`** — array JS `var thzq=[...]`, fallback `var ytaw=[...]`
+   - ⚠️ Le immagini (`i1.mangakatana.com/token/...`) contengono token temporanei: la pagina capitolo **non** va messa in cache
+   - Quando il sito è in manutenzione risponde 200 con il solo testo `maintenance` (11 byte): ricerca/capitoli vuoti non sono un bug del modulo
 
 Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../{slug}.{id}/c{num}`
 
@@ -47,10 +49,26 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 2. **`extractDetails`**, **`extractChapters`**, **`extractImages`** — dal payload JS delle pagine serie/capitolo
    - ⚠️ I capitoli a pagamento (`isLocked:!0`, `price` in coins) vengono esclusi: aperti mostrano solo l'immagine "bloccato"
    - Il sito limita le richieste ravvicinate (connessione resettata): una ricerca vuota va riprovata prima di considerarla un errore
+   - Immagini: i link `i0.wp.com` / `i1.wp.com` (proxy WordPress Photon, ricodifica lenta) vengono convertiti in `storage.vortexscans.org` diretto con `directImageUrl()`, sia nel percorso principale (`url:"...",order:N`) sia nel fallback
 
 ## Rete debole (`soraFetch`)
 - Ogni richiesta viene ritentata fino a **3 volte** (pausa 1 s, poi 2 s) se la rete fallisce o il server risponde 5xx/429/408; stop dopo ~50 s (Shirox concede 120 s a ogni funzione del modulo)
 - Le **immagini** le scarica Shirox (Kingfisher, timeout 15 s, nessun retry): il modulo non può intervenire. Se una pagina non carica: "Tap to retry" sulla pagina
+
+## Cache HTML (`fetchHtmlCached`, dalla 1.0.5)
+- Shirox apre la scheda chiamando `extractDetails` e **poi** `extractChapters` (in sequenza, stessa URL): la seconda legge la pagina dalla cache invece di riscaricarla → scheda aperta in circa metà tempo di rete
+- Cache in memoria: **5 minuti**, max **20 pagine**; si azzera quando si cambia modulo (Shirox crea un contesto JS nuovo)
+- Non salva: status non 2xx, pagine < 1000 caratteri (manutenzione), sfide Cloudflare (`_cf_chl_opt`, `<title>Just a moment`)
+- Nei log: `[Cache] hit <url>` quando la pagina arriva dalla cache
+- Ricerca e pagine capitolo (`extractImages`) **non** passano dalla cache
+
+## Come Shirox esegue il modulo (verificato sul sorgente `xibrox/Shirox`, 2026-10-21)
+- Un solo contesto JS per modulo attivo: le variabili globali (cache) restano vive tra una chiamata e l'altra
+- `fetchv2` rispetta gli header del modulo (UA Windows Chrome 120)
+- Immagini: Shirox manda già `User-Agent` (Mac Chrome 120), `Referer` = origine del sito, `Accept: image/avif,image/webp,...`
+- Reader: precarica 9 pagine + lista e prime 3 pagine del capitolo successivo
+- `extractImages` può restituire `{ url, headers }` per pagina e `searchResults` `imageHeaders` per le copertine. ⚠️ **Mai mettere `User-Agent` in questi header**: sovrascrive quello del bypass Cloudflare e le immagini vengono rifiutate. Al massimo solo `Referer` (es. URL capitolo per MangaKatana), e solo se un test mostra errori 403
+- Le cause di "Page X failed to load" (timeout 15 s, nessun retry) sono dentro Shirox: vanno chieste allo sviluppatore (`.retryStrategy`, timeout 30 s)
 
 ---
 
@@ -73,6 +91,7 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 
 ## 📜 Storico
 
+- **2026-10-21 — MangaKatana 1.0.5 / Vortex Scans 1.0.5**: cache HTML della pagina manga (`extractDetails` + `extractChapters` = 1 download invece di 2); Vortex: link `wp.com` convertiti in storage diretto anche nel percorso principale di `extractImages` (prima solo nel fallback). Test offline (risposte simulate, 62/62 sui 3 moduli: risultati identici alla 1.0.4) e primo test sul telefono OK (più veloce, capitoli caricano bene). Backup pre-modifica in `Repository_Kappa\_backup\2026-10-21_pre-cache\`. Nota: dal PC `vortexscans.org` non risponde a curl (connessione resettata) e `mangakatana.com` era in manutenzione: test dal vivo sul telefono
 - **2026-10-16 — MangaKatana 1.0.4 / Vortex Scans 1.0.4**: retry delle richieste in `soraFetch` (rete 4G/E e reset di connessione di Vortex): prima un errore di rete dava subito "No pages found". Backup pre-modifica in `Repository_Kappa\_backup\2026-10-16_pre-retry\`
 - **2026-10-13 — MangaKatana 1.0.3**: ordine capitoli corretto per i sotto-capitoli a 2 cifre (Berserk 0.10 era duplicato di 0.1 e 0.11–0.16 finivano prima di 0.2); extra senza "Chapter N" numerati dall'URL (prima si sovrapponevano a capitoli veri, es. Attack on Titan 124/134)
 - **2026-10-13 — Vortex Scans 1.0.3**: esclusi i capitoli bloccati a pagamento
