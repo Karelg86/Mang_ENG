@@ -1,11 +1,10 @@
 # 🔄 Quick-Resume: Moduli MangaKatana ENG e Vortex Scans per Shirox
 
-Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-21.
+Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-11-10.
 
 ## 📦 Repository
 
 - **Repository GitHub:** `https://github.com/Karelg86/Mang_ENG` (branch `master`)
-- **Cartella locale:** `C:\Users\kelgazzar\Documents\00_Kappa\17_Repository\Repository_Kappa\Mang_ENG\` (clone git)
 - **URL moduli per Shirox:**
   - MangaKatana: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/mangeng_manga.json`
   - Vortex Scans: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/vortex_manga.json`
@@ -16,11 +15,11 @@ Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-10-21.
 |------|-------------|
 | `mangeng_manga.json` | **Manifest MangaKatana in uso** (`type: mangas`) → punta a `mangakatana_v2.js` |
 | `mangakatana_v2.js` | Script MangaKatana usato da Shirox |
-| `mangakatana_extractor.js` | Copia identica di `mangakatana_v2.js` (tenerle allineate) |
 | `vortex_manga.json` | **Manifest Vortex Scans in uso** → punta a `vortex_extractor_v2.js` |
 | `vortex_extractor_v2.js` | Script Vortex usato da Shirox |
-| `vortex_extractor.js` | Copia identica di `vortex_extractor_v2.js` (tenerle allineate) |
-| `main.json`, `mangeng.json`, `manganov.json` | ⚠️ Obsoleti: `type: novels` e `scriptUrl` verso `extractor.js` che non esiste (404). Non usarli |
+| `test-module.js` | Test offline dei due script (Node.js 18+): `node test-module.js` |
+
+Rimossi il 2026-11-10 (restano nella cronologia git): le copie `mangakatana_extractor.js` e `vortex_extractor.js` (identiche ai `_v2`, non usate da nessun manifest) e i manifest obsoleti `main.json`, `mangeng.json`, `manganov.json` (`type: novels`, `scriptUrl` verso un `extractor.js` inesistente).
 
 ---
 
@@ -74,7 +73,7 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 
 ## 🔁 Procedura di aggiornamento del modulo
 
-1. Modificare lo script (`*_v2.js`) e copiarlo anche nella versione senza `_v2`
+1. Modificare lo script (`*_v2.js`) e lanciare `node test-module.js` (test offline, tutte le righe con ✅)
 2. **Aumentare `"version"` nel manifest** (`mangeng_manga.json` o `vortex_manga.json`). Senza questo Shirox NON vede l'aggiornamento
 3. Commit + push su `master`
 4. **Aspettare ~10 minuti** (GitHub raw ha cache `max-age=300`, anche iOS la rispetta)
@@ -91,6 +90,7 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 
 ## 📜 Storico
 
+- **2026-11-10 — pulizia e test (script invariati, versioni 1.0.5)**: rimossi doppioni e manifest obsoleti; aggiunto `test-module.js` (test offline con pagine finte: ricerca, capitoli, immagini, cache, retry)
 - **2026-10-21 — MangaKatana 1.0.5 / Vortex Scans 1.0.5**: cache HTML della pagina manga (`extractDetails` + `extractChapters` = 1 download invece di 2); Vortex: link `wp.com` convertiti in storage diretto anche nel percorso principale di `extractImages` (prima solo nel fallback). Test offline (risposte simulate, 62/62 sui 3 moduli: risultati identici alla 1.0.4) e primo test sul telefono OK (più veloce, capitoli caricano bene). Backup pre-modifica in `Repository_Kappa\_backup\2026-10-21_pre-cache\`. Nota: dal PC `vortexscans.org` non risponde a curl (connessione resettata) e `mangakatana.com` era in manutenzione: test dal vivo sul telefono
 - **2026-10-16 — MangaKatana 1.0.4 / Vortex Scans 1.0.4**: retry delle richieste in `soraFetch` (rete 4G/E e reset di connessione di Vortex): prima un errore di rete dava subito "No pages found". Backup pre-modifica in `Repository_Kappa\_backup\2026-10-16_pre-retry\`
 - **2026-10-13 — MangaKatana 1.0.3**: ordine capitoli corretto per i sotto-capitoli a 2 cifre (Berserk 0.10 era duplicato di 0.1 e 0.11–0.16 finivano prima di 0.2); extra senza "Chapter N" numerati dall'URL (prima si sovrapponevano a capitoli veri, es. Attack on Titan 124/134)
