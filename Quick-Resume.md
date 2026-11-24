@@ -1,6 +1,6 @@
 # 🔄 Quick-Resume: Moduli MangaKatana ENG e Vortex Scans per Shirox
 
-Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-11-10.
+Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-11-24.
 
 ## 📦 Repository
 
@@ -8,6 +8,7 @@ Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-11-10.
 - **URL moduli per Shirox:**
   - MangaKatana: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/mangeng_manga.json`
   - Vortex Scans: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/vortex_manga.json`
+  - Thunderscans EN: `https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/thunderscans_manga.json`
 
 ## 📄 File nel repository
 
@@ -17,7 +18,9 @@ Manuale di riferimento creato il 2026-09-12, aggiornato il 2026-11-10.
 | `mangakatana_v2.js` | Script MangaKatana usato da Shirox |
 | `vortex_manga.json` | **Manifest Vortex Scans in uso** → punta a `vortex_extractor_v2.js` |
 | `vortex_extractor_v2.js` | Script Vortex usato da Shirox |
-| `test-module.js` | Test offline dei due script (Node.js 18+): `node test-module.js` |
+| `thunderscans_manga.json` | **Manifest Thunderscans EN in uso** → punta a `thunderscans_v1.js` |
+| `thunderscans_v1.js` | Script Thunderscans usato da Shirox |
+| `test-module.js` | Test offline dei tre script (Node.js 18+): `node test-module.js` |
 
 Rimossi il 2026-11-10 (restano nella cronologia git): le copie `mangakatana_extractor.js` e `vortex_extractor.js` (identiche ai `_v2`, non usate da nessun manifest) e i manifest obsoleti `main.json`, `mangeng.json`, `manganov.json` (`type: novels`, `scriptUrl` verso un `extractor.js` inesistente).
 
@@ -49,6 +52,15 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
    - ⚠️ I capitoli a pagamento (`isLocked:!0`, `price` in coins) vengono esclusi: aperti mostrano solo l'immagine "bloccato"
    - Il sito limita le richieste ravvicinate (connessione resettata): una ricerca vuota va riprovata prima di considerarla un errore
    - Immagini: i link `i0.wp.com` / `i1.wp.com` (proxy WordPress Photon, ricodifica lenta) vengono convertiti in `storage.vortexscans.org` diretto con `directImageUrl()`, sia nel percorso principale (`url:"...",order:N`) sia nel fallback
+
+## ⚙️ Thunderscans EN (`thunderscans_v1.js`) — 1.0.0, mai provato dal telefono
+Dominio: `en-thunderscans.com` (NON `thunderscans.com`: rimanda a un dominio pubblicitario). Tema WordPress "mangareader": HTML normale.
+1. **`searchResults`** — GET `/?s={kw}`; parola vuota → `/comics/`. Blocchi `<div class="bsx">` dentro `class="listupd"`, fermandosi a `pagination`/`sidebar`. Nessun risultato = nessun `bsx`
+2. **`extractDetails`** — trama in `itemprop="description"`, generi dai link `/genres/`
+3. **`extractChapters`** — `<li data-num="N"><a  href="…">` dopo `id="chapterlist"` (due spazi dopo `<a`); sul sito sono dal più recente, il modulo ordina in crescita. Esclusi i `<li>` con `lock|premium|coin` (cautela: nessun capitolo a pagamento osservato)
+4. **`extractImages`** — oggetto JSON in `ts_reader.run({...})`, lettura con conteggio graffe; usa `defaultSource` o la prima `sources[]`; `protected:true` → `[]`. Riserva: `"images":[...]`. Pagina capitolo mai in cache
+- Immagini scaricabili anche senza Referer (verificato 2026-11-24, HTTP 200)
+- Scartati: comix.to (API cifrata e token generato da JS offuscato), madarascans.net (dal PC "connection reset", non analizzabile)
 
 ## Rete debole (`soraFetch`)
 - Ogni richiesta viene ritentata fino a **3 volte** (pausa 1 s, poi 2 s) se la rete fallisce o il server risponde 5xx/429/408; stop dopo ~50 s (Shirox concede 120 s a ogni funzione del modulo)
@@ -90,6 +102,7 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 
 ## 📜 Storico
 
+- **2026-11-24 — Thunderscans EN 1.0.0 (nuovo)**: modulo scritto da diagnosi sul sito vero (sola lettura), test offline; prova dal telefono ancora da fare
 - **2026-11-10 — pulizia e test (script invariati, versioni 1.0.5)**: rimossi doppioni e manifest obsoleti; aggiunto `test-module.js` (test offline con pagine finte: ricerca, capitoli, immagini, cache, retry)
 - **2026-10-21 — MangaKatana 1.0.5 / Vortex Scans 1.0.5**: cache HTML della pagina manga (`extractDetails` + `extractChapters` = 1 download invece di 2); Vortex: link `wp.com` convertiti in storage diretto anche nel percorso principale di `extractImages` (prima solo nel fallback). Test offline (risposte simulate, 62/62 sui 3 moduli: risultati identici alla 1.0.4) e primo test sul telefono OK (più veloce, capitoli caricano bene). Backup pre-modifica in `Repository_Kappa\_backup\2026-10-21_pre-cache\`. Nota: dal PC `vortexscans.org` non risponde a curl (connessione resettata) e `mangakatana.com` era in manutenzione: test dal vivo sul telefono
 - **2026-10-16 — MangaKatana 1.0.4 / Vortex Scans 1.0.4**: retry delle richieste in `soraFetch` (rete 4G/E e reset di connessione di Vortex): prima un errore di rete dava subito "No pages found". Backup pre-modifica in `Repository_Kappa\_backup\2026-10-16_pre-retry\`
@@ -100,5 +113,5 @@ Struttura URL: manga `https://mangakatana.com/manga/{slug}.{id}`, capitolo `.../
 - **2026-10-13 — MangaKatana 1.0.2**: gestione redirect con un solo risultato (prima mostrava manga a caso); ricerca senza risultati ora vuota (prima 36 manga a caso + voce `'+title+'`); esclusi i widget dopo la lista; rimosso filtro keyword (perdeva i titoli trovati per nome alternativo); decodifica entità HTML
 - **2026-10-13 — Vortex Scans 1.0.2**: trovati anche i titoli con apostrofo nello slug; titoli con caratteri escapati decodificati
 
-**Domini correnti configurati nei file:** `mangakatana.com`, `vortexscans.org`
+**Domini correnti configurati nei file:** `mangakatana.com`, `vortexscans.org`, `en-thunderscans.com`
 *(Mantenere quest'ultima riga aggiornata a ogni sostituzione)*

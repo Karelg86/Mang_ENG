@@ -1,0 +1,17 @@
+{
+  "sourceName": "Thunderscans EN",
+  "iconURL": "https://en-thunderscans.com/wp-content/uploads/2023/12/cropped-EN-TH-WEB-32x32.png",
+  "version": "1.0.0",
+  "language": "English",
+  "languageType": [
+    "Scanlation"
+  ],
+  "scriptURL": "https://raw.githubusercontent.com/Karelg86/Mang_ENG/master/thunderscans_v1.js",
+  "author": {
+    "name": "Karelg86",
+    "iconURL": "https://github.com/Karelg86.png"
+  },
+  "type": "mangas",
+  "baseURL": "https://en-thunderscans.com/",
+  "searchBaseURL": "https://en-thunderscans.com/?s=%s"
+}

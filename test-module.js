@@ -1,5 +1,5 @@
 /**
- * Test offline per mangakatana_v2.js e vortex_extractor_v2.js (Node.js 18+)
+ * Test offline per mangakatana_v2.js, vortex_extractor_v2.js e thunderscans_v1.js (Node.js 18+)
  *
  * Uso:
  *   node test-module.js          -> test OFFLINE con pagine finte (non tocca internet)
@@ -8,6 +8,7 @@
  * fetchv2 non esiste in Node: soraFetch usa fetch, qui sostituito da risposte finte.
  * Non c'è un test dal vivo: dal PC vortexscans.org non risponde (connessione resettata)
  * e mangakatana.com è spesso in manutenzione, la prova vera si fa sul telefono.
+ * en-thunderscans.com risponde dal PC ma anche per lui la prova vera si fa sul telefono.
  */
 
 const fs = require("fs");
@@ -232,10 +233,119 @@ chapters:[{id:3,slug:"chapter-3",number:3,isLocked:!1,price:0},
   await retryChecks(FILE, pages, searchUrl, (e) => e.searchResults("sword"), 2);
 }
 
+// ==========================================
+// THUNDERSCANS EN
+// ==========================================
+async function runThunderscans() {
+  console.log("\n🧪 Test OFFLINE Thunderscans EN\n");
+  const FILE = "thunderscans_v1.js";
+  const BASE = "https://en-thunderscans.com";
+  const searchUrl = (kw) => `${BASE}/?s=${encodeURIComponent(kw)}`;
+  const SERIES_URL = `${BASE}/comics/the-illegitimate-son/`;
+  const CH1 = `${BASE}/the-illegitimate-son-chapter-1/`;
+  const CH2 = `${BASE}/the-illegitimate-son-chapter-2/`;
+  const CH3 = `${BASE}/the-illegitimate-son-chapter-3/`;
+  const CH10 = `${BASE}/the-illegitimate-son-chapter-10/`;
+  const CH105 = `${BASE}/the-illegitimate-son-chapter-10-5/`;
+
+  const bsx = (slug, title, img) => `<div class="bs">
+    <div class="bsx">
+      <a href="${BASE}/comics/${slug}/" title="${title}">
+        <div class="limit"><img src="${img}" class="ts-post-image" loading="lazy"/></div>
+        <div class="bigor"><div class="tt">${title}</div></div>
+      </a>
+    </div>
+  </div>`;
+
+  const searchPage = `<html>${FILLER}<div class="listupd">
+    ${bsx("the-illegitimate-son", "The Illegitimate Son &#8217;Summoner&#8217; &amp; Co", "https://img.example/a-225x300.webp")}
+    ${bsx("the-illegitimate-son", "Doppione", "https://img.example/dup.webp")}
+    ${bsx("other-series", "Other Series", "https://img.example/b-225x300.webp")}
+    <div class="pagination"></div></div>
+    <div id="sidebar"><div class="bsx"><a href="${BASE}/comics/widget/" title="Widget"><img src="https://img.example/w.webp"/></a></div></div></html>`;
+  const noResultsPage = `<html>${FILLER}<div class="listupd"></div><h1>Not Found</h1></html>`;
+
+  const seriesPage = `<html>${FILLER}
+    <div class="entry-content entry-content-single" itemprop="description">
+      <p>Kain, a concubine&#8217;s son &amp; more.</p><p>Second paragraph.</p>
+    </div>
+    <a href="${BASE}/genres/action/" rel="tag">Action</a>
+    <a href="${BASE}/genres/fantasy/" rel="tag">Fantasy</a>
+    <a href="${BASE}/genres/action/" rel="tag">Action</a>
+    <div class="eplister" id="chapterlist"><style>.x{color:red}</style>
+    <ul >
+      <li data-num="10.5"><a  href="${CH105}"><div class="chbox"><span class="chapternum">Chapter 10.5</span></div></a></li>
+      <li data-num="10"><a  href="${CH10}"><div class="chbox"></div></a></li>
+      <li data-num="3"><a  href="${CH3}"><div class="chbox"><span class="chapternum">Chapter 3</span></div></a></li>
+      <li data-num="2"><a  href="${CH2}"><div class="chbox"><span class="lock-icon"></span></div></a></li>
+      <li data-num="1"><a  href="${CH1}"><div class="chbox"></div></a></li>
+      <li data-num="1"><a  href="${CH1}"><div class="chbox"></div></a></li>
+    </ul></div></html>`;
+
+  const readerPage = (json) => `<html>${FILLER}<script>ts_reader.run(${json});</script><script>var post_id = 1;</script></html>`;
+  const okJson = String.raw`{"post_id":1,"prevUrl":"","nextUrl":"","mode":"full","sources":[{"source":"Server 1","images":["https:\/\/en-thunderscans.com\/wp-content\/uploads\/manga\/x\/0001.jpg","https:\/\/en-thunderscans.com\/wp-content\/uploads\/manga\/x\/0002.webp","https:\/\/en-thunderscans.com\/wp-content\/uploads\/manga\/x\/0001.jpg"]}],"protected":false,"unlock_token":null,"note":"testo con } e { dentro"}`;
+  const protectedJson = String.raw`{"sources":[{"source":"Server 1","images":["https:\/\/en-thunderscans.com\/x.jpg"]}],"protected":true}`;
+  const brokenPage = String.raw`<html>${FILLER}<script>var s = {"images":["https:\/\/en-thunderscans.com\/p\/1.jpg","https:\/\/en-thunderscans.com\/p\/2.jpg"]};</script></html>`;
+
+  const pages = {
+    [searchUrl("summoner")]: searchPage,
+    [searchUrl("zzzz")]: noResultsPage,
+    [`${BASE}/comics/`]: searchPage,
+    [SERIES_URL]: seriesPage,
+    [CH1]: readerPage(okJson),
+    [CH2]: readerPage(protectedJson),
+    [CH3]: brokenPage,
+  };
+
+  // --- Ricerca ---
+  let mock = makeMockFetch(pages);
+  let ex = loadExtractor(FILE, mock.fetchImpl);
+  const list = await ex.searchResults("summoner");
+  check("search: indirizzo /?s=", mock.calls[searchUrl("summoner")] === 1, Object.keys(mock.calls).join(" "));
+  check("search: 2 risultati, senza doppioni e senza il widget laterale", list.length === 2, `${list.length}`);
+  check("search: id = URL della serie", list[0] && list[0].id === SERIES_URL, list[0] && list[0].id);
+  check("search: titolo con entità decodificate", list[0] && list[0].title === "The Illegitimate Son ’Summoner’ & Co", list[0] && list[0].title);
+  check("search: copertina", list[1] && list[1].imageURL === "https://img.example/b-225x300.webp", list[1] && list[1].imageURL);
+  check("search: nessun risultato -> []", (await ex.searchResults("zzzz")).length === 0);
+  mock = makeMockFetch(pages);
+  ex = loadExtractor(FILE, mock.fetchImpl);
+  await ex.searchResults("");
+  check("search: parola vuota -> /comics/", mock.calls[`${BASE}/comics/`] === 1, Object.keys(mock.calls).join(" "));
+
+  // --- Dettagli + capitoli (una sola richiesta grazie alla cache) ---
+  mock = makeMockFetch(pages);
+  ex = loadExtractor(FILE, mock.fetchImpl);
+  const details = await ex.extractDetails(SERIES_URL);
+  check("details: trama su due paragrafi, entità decodificate", details.description === "Kain, a concubine’s son & more.\n\nSecond paragraph.", JSON.stringify(details.description));
+  check("details: generi senza doppioni", Array.from(details.tags).join(",") === "Action,Fantasy", Array.from(details.tags).join(","));
+  const chapters = await ex.extractChapters(SERIES_URL);
+  check("cache: pagina serie scaricata una sola volta", mock.calls[SERIES_URL] === 1, `${mock.calls[SERIES_URL]} richieste`);
+  const entries = chapters["English"] || [];
+  const labels = entries.map((e) => e[0]).join(",");
+  check("chapters: ordine crescente, decimale, bloccato e doppione esclusi", labels === "1,3,10,10.5", labels);
+  check("chapters: titolo, id, numero e gruppo", entries[1] && entries[1][1][0].title === "Chapter 3" && entries[1][1][0].id === CH3 && entries[1][1][0].chapter === 3 && entries[1][1][0].scanlation_group === "Thunderscans", entries[1] && JSON.stringify(entries[1][1][0]));
+  check("chapters: campo interno 'label' non esposto", entries.every((e) => !("label" in e[1][0])));
+
+  // --- Immagini ---
+  mock = makeMockFetch(pages);
+  ex = loadExtractor(FILE, mock.fetchImpl);
+  const images = await ex.extractImages(CH1);
+  check("images: da ts_reader.run, senza doppioni, graffe nelle stringhe ok",
+    images.join(",") === `${BASE}/wp-content/uploads/manga/x/0001.jpg,${BASE}/wp-content/uploads/manga/x/0002.webp`, images.join(","));
+  await ex.extractImages(CH1);
+  check("images: pagina capitolo mai in cache", mock.calls[CH1] === 2, `${mock.calls[CH1]} richieste`);
+  check("images: capitolo protetto -> []", (await ex.extractImages(CH2)).length === 0);
+  const fallback = await ex.extractImages(CH3);
+  check("images: riserva \"images\":[...]", fallback.join(",") === `${BASE}/p/1.jpg,${BASE}/p/2.jpg`, fallback.join(","));
+
+  await retryChecks(FILE, pages, searchUrl("summoner"), (e) => e.searchResults("summoner"), 2);
+}
+
 (async () => {
   try {
     await runMangaKatana();
     await runVortex();
+    await runThunderscans();
   } catch (error) {
     console.error("💥 Errore imprevisto:", error);
     failures++;
